@@ -1,10 +1,10 @@
 import numpy as np
 import copy
+import itertools
 
 WHITE = 1
 BLACK = 2
 EMPTY = 0
-
 
 class Board:
     def __init__(self, board_size):
@@ -25,207 +25,31 @@ class Board:
     def __setitem__(self, key, item):
         self.board[key] = item
 
-    def is_won(self):
-        for i in range(self.board_size):
-            if self.board[self.board_size - 1][i] == WHITE:
-                # print("White has won")
-                return WHITE
-            if self.board[0][i] == BLACK:
-                # print("Black has won")
-                return BLACK
-        return EMPTY
-
-    def update_board(self, move):
-        self.board[move[0][0], move[0][1]] = EMPTY
-        if self.turn == WHITE:
-            self.board[move[1][0], move[1][1]] = WHITE
-            self.turn = BLACK
-        elif self.turn == BLACK:
-            self.board[move[1][0], move[1][1]] = BLACK
-            self.turn = WHITE
-
-    def random_policy(self, legal_moves):
-        rand = np.random.randint(len(legal_moves))
-        best_move = legal_moves[rand]
-        return best_move
-
-    def random_playout(self, verbose=False):
-        if verbose:
-            print(self.board)
-        while not self.is_won():
-            M = Move(self)
-            legal_moves = M.pawnLegalMoves()
-
-            best_move = self.random_policy(legal_moves)
-            if verbose:
-                print("play:", best_move)
-
-            self.update_board(best_move)
-            if verbose:
-                print(self.board)
-        return self.is_won()
-
-    def ucb(self, w, n, t, c):
-        return (w / n) + c * np.sqrt(np.log(t) / n)
-
-    def flat_mc(self, nb_playout=10):
-        '''
-        policy='random' : one random playout
-        winning_rate refers to white winning rate
-        '''
-        # print(self.board)
-        move_count = 0
-        while not self.is_won():
-            move_count += 1
-            # print('move count', move_count)
-            # print("Move:", move_count)
-            M = Move(self)
-            legal_moves = M.pawnLegalMoves()
-
-            winning_rate = []
-            for legal_move in legal_moves:
-                board_initial = copy.deepcopy(self)
-                # play the first move
-                board_initial.update_board(legal_move)
-                # play nb_game random games
-                history = []
-                for _ in range(nb_playout):
-                    board_playout = copy.deepcopy(board_initial)
-                    history.append(board_playout.random_playout())
-                    # print(history)
-                winning_rate.append((history.count(1) / nb_playout) * 100)
-            # print(len(white_winning_rate))
-            best_rate = max(winning_rate)
-            best_move_index = winning_rate.index(best_rate)
-            best_move = legal_moves[best_move_index]
-            print("best white winning rate", best_rate)
-            best_move = self.random_policy(legal_moves)
-
-            # print("play:", move)
-            self.update_board(best_move)
-            # print(self.board)
-
-        # def game(self, policy, nb_simu=1, explo_param=0.4):
-    #     '''
-    #     policy='random' : one random playout
-    #     winning_rate refers to white winning rate
-    #     '''
-    #     # print(self.board)
-    #     move_count = 0
-    #     win_count = 0
-    #     simu_count = 0
-    #
-    #     while not self.is_won():
-    #         move_count += 1
-    #         print('move count', move_count)
-    #         # print("Move:", move_count)
-    #         M = Move(self)
-    #         legal_moves = M.pawnLegalMoves()
-    #
-    #         if policy == "random":
-    #             best_move = self.random_policy(legal_moves)
-    #
-    #         winning_rate = []
-    #         ucbounds = []
-    #         ucbound = []
-    #         tot_simu_count = 0
-    #         for legal_move in legal_moves:
-    #             board_initial = copy.deepcopy(self)
-    #             # play the first move
-    #             board_initial.update_board(legal_move)
-    #             # play nb_game random games
-    #
-    #             history = []
-    #             simu_count = 0
-    #             for _ in range(nb_simu):
-    #                 simu_count += 1
-    #                 stat = {'move_count': move_count, 'win_count': win_count, 'simu_count': simu_count}
-    #                 tot_simu_count += 1
-    #                 # print("simu_count", simu_count)
-    #                 board_playout = copy.deepcopy(board_initial)
-    #                 history.append(board_playout.random_playout())
-    #                 ucbound = self.ucbound(win_count, simu_count, tot_simu_count, explo_param)
-    #                 ucbounds.append(ucbound)
-    #             winning_rate.append((history.count(1) / nb_simu) * 100)
-    #             ucbound = max(ucbounds)
-    #         # print(len(white_winning_rate))
-    #
-    #         if policy == 'flat':
-    #             best_move_index = winning_rate.index(max(winning_rate))
-    #             best_move = legal_moves[best_move_index]
-    #
-    #         if policy == 'ucb':
-    #             best_move_index = ucbound.index(max(ucbound))
-    #             best_move = legal_moves[best_move_index]
-    #             print(ucbound)
-    #
-    #         move = best_move
-    #         # print("play:", move)
-    #         self.update_board(move)
-    #         # print(self.board)
-    #
-    #         if self.is_won() == WHITE:
-    #             win_count += 1
-    #             print("win_count", win_count)
-    #
-    #     stat = {'move_count': move_count, 'win_count': win_count, 'simu_count': simu_count}
-    #     print(stat)
-
-    # def flat_mc(self, nb_game, legal_moves):
-    #     white_winning_rate = []
-    #     for legal_move in legal_moves:
-    #         board_initial = copy.deepcopy(self)
-    #         # play the first move
-    #         board_initial.update_board(legal_move)
-    #         # play nb_game random games
-    #         history = []
-    #         for _ in range(nb_game):
-    #             board_playout = copy.deepcopy(board_initial)
-    #             history.append(board_playout.random_playout())
-    #             # print(history)
-    #         white_winning_rate.append((history.count(1) / nb_game) * 100)
-    #     # print(len(white_winning_rate))
-    #     best_rate = max(white_winning_rate)
-    #     best_move_index = white_winning_rate.index(best_rate)
-    #     best_move = legal_moves[best_move_index]
-    #     print("best white winning rate", best_rate)
-    #     return best_move
-
-
-class Move:
-    def __init__(self, board):
-        self.board = board
-        self.color = board.turn
-        self.board_size = board.board_size
-
     def pawnLegalMoves(self):
-        """ A function that returns the all possible moves
-            from https://impythonist.wordpress.com/2017/01/01/modeling-a-chessboard-and-mechanics-of-its-pieces-in-python/
-        """
         legalMoves = []
         for i in range(self.board_size):
             for j in range(self.board_size):
                 # print("current move:", [i, j])
                 possibleMoves = []
 
-                if self.color == WHITE:
+                if self.turn == WHITE:
                     try:
-                        temp = self.board[i + 1][j - 1]
+                        self.board[i + 1][j - 1]
                         possibleMoves.append([[i, j], [i + 1, j - 1]])
                     except:
                         pass
                     try:
-                        temp = self.board[i + 1][j]
+                        self.board[i + 1][j]
                         possibleMoves.append([[i, j], [i + 1, j]])
                     except:
                         pass
                     try:
-                        temp = self.board[i + 1][j + 1]
+                        self.board[i + 1][j + 1]
                         possibleMoves.append([[i, j], [i + 1, j + 1]])
                     except:
                         pass
 
-                if self.color == BLACK:
+                if self.turn == BLACK:
                     try:
                         temp = self.board[i - 1][j - 1]
                         possibleMoves.append([[i, j], [i - 1, j - 1]])
@@ -259,7 +83,7 @@ class Move:
             return False
 
         # current player is white
-        if self.color == WHITE:
+        if self.turn == WHITE:
             if self.board[possibleMove[0][0], possibleMove[0][1]] == WHITE:
                 # move one square down
                 if possibleMove[1][0] != possibleMove[0][0] + 1:
@@ -280,7 +104,7 @@ class Move:
                     return False
             return False
 
-        elif self.color == BLACK:
+        elif self.turn == BLACK:
             if self.board[possibleMove[0][0], possibleMove[0][1]] == BLACK:
                 if possibleMove[1][0] != possibleMove[0][0] - 1:
                     return False
@@ -298,17 +122,165 @@ class Move:
             return False
         return False
 
+    def is_won(self):
+        for i in range(self.board_size):
+            if self.board[self.board_size - 1][i] == WHITE:
+                return WHITE
+            if self.board[0][i] == BLACK:
+                return BLACK
+        return EMPTY
+
+    def update_board(self, move):
+        self.board[move[0][0], move[0][1]] = EMPTY
+        if self.turn == WHITE:
+            self.board[move[1][0], move[1][1]] = WHITE
+            self.turn = BLACK
+        elif self.turn == BLACK:
+            self.board[move[1][0], move[1][1]] = BLACK
+            self.turn = WHITE
+
+class Game():
+    def __init__(self, board, verbose=False):
+        self.board = board
+        self.random_policy = Random_policy(self.board)
+        self.flat_mc_policy = Flat_mc_policy(board=self.board, game=self)
+        self.verbose = verbose
+
+    def play(self, board, policy_white='random', policy_black='random', verbose=False):
+        if verbose:
+            print(board.board)
+        policies = itertools.cycle([policy_white, policy_black])
+        while not board.is_won():
+            policy = next(policies)
+            if policy == 'random':
+                best_move = self.random_policy.best_move()
+            if policy == 'flat_mc':
+                best_move = self.flat_mc_policy.best_move()
+
+            if verbose:
+                print("play:", best_move)
+            board.update_board(best_move)
+            if verbose:
+                print(board.board)
+        return board.is_won()
+
+class Random_policy():
+    """
+    prend en entrée l'état du jeu (board), et retourne le meilleur coup possible suivant la politique de la classe
+    """
+    def __init__(self, board, nb_playout=1):
+        self.board = board
+        
+    def best_move(self):
+        legal_moves = board.pawnLegalMoves()
+        best_move_index = np.random.randint(len(legal_moves))
+        best_move = legal_moves[best_move_index]
+        print(best_move)
+        return best_move
+
+class UCB_policy(Random_policy):
+    def __init__(self, board, nb_playout=10):
+        self.board = board
+        self.nb_playout = nb_playout
+
+    def ucb(self, w, n, t, c):
+        return (w / n) + c * np.sqrt(np.log(t) / n)
+
+    # def best_move(self):
+    #     legal_moves = self.board.pawnLegalMoves()
+        
+    #     for _ in range(nb_playout):
+    #         for legal_move in legal_moves:
+    #             pass
+    #     return best_move
+
+class Flat_mc_policy(Random_policy):
+    def __init__(self, board, game, nb_playout=10, verbose=False):
+        self.game = game
+        self.board = board
+        self.win_rate = []
+        self.win_history = []
+        self.nb_playout = nb_playout
+        self.verbose = verbose
+    
+    def choose_move(self, legal_moves):
+        chosen_moves = itertools.cycle(legal_moves)
+        chosen_move = next(chosen_moves)
+        print(chosen_move)
+        return chosen_move
+
+    def best_move(self):
+        board_initial = copy.deepcopy(self.board)
+        legal_moves = self.board.pawnLegalMoves()
+
+        for _ in range(nb_playout):
+            board_initial = copy.deepcopy(self.board)
+            chosen_move = self.choose_move(legal_moves)
+
+            # play the first move
+            board_initial.update_board(chosen_move)
+
+            rslt = self.game.play(board=board_initial, policy_white='random', policy_black='random', verbose=self.verbose)
+            self.win_history.append(rslt)
+
+            if verbose:
+                print(self.win_history)
+
+            self.win_rate.append((self.win_history.count(1) / self.nb_playout) * 100)
+
+        best_rate = max(self.win_rate)
+        best_move_index = self.win_rate.index(best_rate)
+        best_move = legal_moves[best_move_index]
+        if verbose:
+            print("best white winning rate", best_rate)
+
+        return best_move
+
+    # def best_move(self):
+    #     legal_moves = self.board.pawnLegalMoves()
+
+    #     for legal_move in legal_moves:
+    #         board_initial = copy.deepcopy(self.board)
+    #         if verbose:
+    #             print(board.board)
+    #         # play the first move
+    #         board_initial.update_board(legal_move)
+    #         # play nb_game random games
+    #         for _ in range(self.nb_playout):
+    #             board_playout = copy.deepcopy(board_initial)
+    #             rslt = self.game.play(policy_black='random', policy_white='random', board=board_playout, verbose=self.verbose)
+    #             self.history.append(rslt)
+    #             if verbose:
+    #                 print(self.history)
+    #         self.winning_rate.append((self.history.count(1) / self.nb_playout) * 100)
+        
+    #     best_rate = max(self.winning_rate)
+    #     best_move_index = self.winning_rate.index(best_rate)
+    #     best_move = legal_moves[best_move_index]
+    #     if verbose:
+    #         print("best white winning rate", best_rate)
+    #     return best_move
 
 if __name__ == "__main__":
     BOARD_SIZE = 5
     nb_playout = 10
+    nb_game = 10
     explo_param = 0.4
     verbose = False
+    policy_white = 'flat_mc'
+    policy_black = 'random'
 
-    board = Board(BOARD_SIZE)
+    win_history = []
+    for _ in range(nb_game):
+        board = Board(BOARD_SIZE)
+        game = Game(board, verbose=verbose)
+        game_rslt = game.play(board=board, policy_white=policy_white, policy_black=policy_black, verbose=verbose)
+        win_history.append(game_rslt)
+    white_win_rate = (win_history.count(1) / nb_game) * 100
+    black_win_rate = (win_history.count(2) / nb_game) * 100
 
-    # print(board.random_playout(verbose=verbose))
-    board.flat_mc(nb_playout)
+    print("white_win_rate", white_win_rate)
+    print("black_win_rate", black_win_rate)
 
     print("done !")
 
