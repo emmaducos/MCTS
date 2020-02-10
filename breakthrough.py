@@ -175,7 +175,6 @@ class Random_policy():
         legal_moves = board.pawnLegalMoves()
         best_move_index = np.random.randint(len(legal_moves))
         best_move = legal_moves[best_move_index]
-        print(best_move)
         return best_move
 
 class UCB_policy(Random_policy):
