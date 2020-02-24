@@ -51,17 +51,17 @@ class Board:
 
                 if self.turn == BLACK:
                     try:
-                        temp = self.board[i - 1][j - 1]
+                        self.board[i - 1][j - 1]
                         possibleMoves.append([[i, j], [i - 1, j - 1]])
                     except:
                         pass
                     try:
-                        temp = self.board[i - 1][j]
+                        self.board[i - 1][j]
                         possibleMoves.append([[i, j], [i - 1, j]])
                     except:
                         pass
                     try:
-                        temp = self.board[i - 1][j + 1]
+                        self.board[i - 1][j + 1]
                         possibleMoves.append([[i, j], [i - 1, j + 1]])
                     except:
                         pass

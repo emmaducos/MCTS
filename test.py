@@ -139,15 +139,6 @@ class BreakThroughState:
             if self.board[0][i] == BLACK:
                 return BLACK
         return EMPTY
-
-    # def update_board(self, move):
-    #     self.board[move[0][0], move[0][1]] = EMPTY
-    #     if self.precedent_turn == WHITE:
-    #         self.board[move[1][0], move[1][1]] = BLACK
-    #         self.precedent_turn = BLACK
-    #     elif self.precedent_turn == BLACK:
-    #         self.board[move[1][0], move[1][1]] = WHITE
-    #         self.precedent_turn = WHITE
     
     def update_board(self, move):
         self.board[move[0][0], move[0][1]] = EMPTY
@@ -179,7 +170,7 @@ class Node:
         s = sorted(self.childNodes, key = lambda c: c.wins/c.visits + explo_param * math.sqrt(2*math.log(self.visits)/c.visits))[-1]
         return s
     
-    def AddChild(self, m, s):
+    def addChild(self, m, s):
         """ Remove m from untriedMoves and add a new child node for this move.
             Return the added child node
         """
@@ -188,129 +179,99 @@ class Node:
         self.childNodes.append(n)
         return n
     
-    def Update(self, result):
+    def update(self, result):
         """ Update this node - one additional visit and result additional wins. 
             result must be from the viewpoint of turn.
         """
+        # print('rslt', result)
         self.visits += 1
+        # print('visits', self.visits)
         self.wins += result
+        # print('win', self.wins)
 
     def __repr__(self):
-        return "[M:" + str(self.move) + " W/V:" + str(self.wins) + "/" + str(self.visits) + " U:" + str(self.untriedMoves) + "]"
+        return "[move:" + str(self.move) + "; wins/visits:" + str(self.wins) + "/" + str(self.visits) + "; nb_untriedmoves:" + str(len(self.untriedMoves)) + "]"
 
-    def TreeToString(self, indent):
-        s = self.IndentString(indent) + str(self)
-        for c in self.childNodes:
-             s += c.TreeToString(indent+1)
-        return s
+class Policy:
+    def __init__(self, state):
+        self.state = state
 
-    def IndentString(self,indent):
-        s = "\n"
-        for i in range (1,indent+1):
-            s += "| "
-        return s
-
-    def ChildrenToString(self):
-        s = ""
-        for c in self.childNodes:
-             s += str(c) + "\n"
-        return s
-
-def UCT(rootstate, itermax, explo_param, verbose = False):
-    """ Conduct a UCT search for itermax iterations starting from rootstate.
-        Return the best move from the rootstate.
-        """
-
-    rootnode = Node(state=rootstate)
-
-    for i in range(itermax):
-        node = rootnode
-        state = rootstate.clone()
-
-        # Select
-        while node.untriedMoves == [] and node.childNodes != []: # node is fully expanded and non-terminal
-            node = node.UCTSelectChild(explo_param=explo_param)
-            state.update_board(node.move)
-
-        # Expand
-        if node.untriedMoves != []: # if we can expand (i.e. state/node is non-terminal)
-            m = random.choice(node.untriedMoves) 
-            state.update_board(m)
-            node = node.AddChild(m,state) # add child and descend tree
-
-        # Rollout - this can often be made orders of magnitude quicker using a state.GetRandomMove() function
-        while state.pawnLegalMoves() != []: # while state is non-terminal
-            state.update_board(random.choice(state.pawnLegalMoves()))
-
-        # Backpropagate
-        while node != None: # backpropagate from the expanded node and work back to the root node
-            node.Update(state.is_won()) # state is terminal. Update node with result from POV of node.playerJustMoved
-            node = node.parentNode
-
-    # Output some information about the tree - can be omitted
-    # if verbose: print rootnode.TreeToString(0)
-    # else: print rootnode.ChildrenToString()
-
-    return sorted(rootnode.childNodes, key = lambda c: c.visits)[-1].move # return the move that was most visited
-  
-
-class Game():
-    def __init__(self, board, verbose=False):
-        self.board = board
-        self.random_policy = Random_policy(self.board)
-        self.flat_mc_policy = Flat_mc_policy(board=self.board, game=self)
-        self.verbose = verbose
-
-    def play(self, board, policy_white='random', policy_black='random', verbose=False):
-        if verbose:
-            print(board.board)
-        policies = itertools.cycle([policy_white, policy_black])
-        while not board.is_won():
-            policy = next(policies)
-            if policy == 'random':
-                best_move = self.random_policy.best_move()
-            if policy == 'uct':
-                best_move = self.flat_mc_policy.best_move()
-
-            if verbose:
-                print("play:", best_move)
-            board.update_board(best_move)
-            if verbose:
-                print(board.board)
-        return board.is_won()
-
-class Random_policy():
-    """
-    prend en entrée l'état du jeu (board), et retourne le meilleur coup possible suivant la politique de la classe
-    """
-    def __init__(self, board, nb_playout=1):
-        self.board = board
-        
-    def best_move(self):
-        legal_moves = board.pawnLegalMoves()
+    def random(self):
+        legal_moves = self.state.pawnLegalMoves()
         best_move_index = np.random.randint(len(legal_moves))
         best_move = legal_moves[best_move_index]
         return best_move
 
+    def UCT(self, itermax, explo_param, verbose = False):
+        """ Conduct a UCT search for itermax iterations starting from rootstate.
+            Return the best move from the rootstate.
+            """
+        rootstate = self.state
+        rootnode = Node(state=rootstate)
+
+        for i in range(itermax):
+            print("iteration UCT", i)
+            node = rootnode
+            state = rootstate.clone()
+            print(node)
+            # Select
+            while node.untriedMoves == [] and node.childNodes != []: # node is fully expanded and non-terminal
+                node = node.UCTSelectChild(explo_param=explo_param)
+                state.update_board(node.move)
+            print(node)
+            # Expand
+            if node.untriedMoves != []: # if we can expand (i.e. state/node is non-terminal)
+                m = random.choice(node.untriedMoves) 
+                state.update_board(m)
+                node = node.addChild(m, state) # add child and descend tree
+            print(node)
+            # Rollout - this can often be made orders of magnitude quicker using a state.GetRandomMove() function
+            while state.pawnLegalMoves() != []: # while state is non-terminal
+                state.update_board(random.choice(state.pawnLegalMoves()))
+            print(node)
+            # Backpropagate
+            while node != None: # backpropagate from the expanded node and work back to the root node
+                node.update(state.is_won()) # state is terminal. Update node with result from POV of node.playerJustMoved
+                node = node.parentNode
+            print(node)
+        return sorted(rootnode.childNodes, key = lambda c: c.visits)[-1].move # return the move that was most visited
+
+def game(board_size, explo_param, verbose):
+    state = BreakThroughState(board_size)
+    policy = Policy(state)
+    print("turn", state.turn)
+    while (state.pawnLegalMoves() != []):
+        if verbose:
+            print(state.board)
+        if state.turn == WHITE:
+            m = policy.UCT(itermax=100, explo_param=explo_param, verbose=verbose) # play with values for itermax and verbose = True
+        elif state.turn == BLACK:
+            m = policy.random()
+        if verbose:
+            print("Best Move: " + str(m) + "\n")
+        state.update_board(m)
+    if state.is_won() == WHITE:
+        print("Player WHITE wins!")
+    elif state.is_won() == BLACK:
+        print("Player BLACK wins!")
+    else: print("Nobody wins!")
+    return state.is_won()
+
 if __name__ == "__main__":
     BOARD_SIZE = 5
     explo_param = 0.4
+    verbose = True
+    nb_game = 10
 
-    state = BreakThroughState(BOARD_SIZE)
+    win_history = []
+    for _ in range(nb_game):
+        game_rslt = game(board_size=BOARD_SIZE, explo_param=explo_param, verbose=verbose)
+        win_history.append(game_rslt)
+    
+    white_win_rate = (win_history.count(1) / nb_game) * 100
+    black_win_rate = (win_history.count(2) / nb_game) * 100
 
-    while (state.pawnLegalMoves() != []):
-        print(state.board)
-        if state.turn == WHITE:
-            m = UCT(rootstate=state, itermax=1000, explo_param=explo_param, verbose=False) # play with values for itermax and verbose = True
-        else:
-            m = UCT(rootstate=state, itermax=100, explo_param=explo_param, verbose=False)
-        print("Best Move: " + str(m) + "\n")
-        state.update_board(m)
-    if state.is_won(state.turn) == 1.0:
-        print("Player " + str(state.turn) + " wins!")
-    elif state.is_won(state.turn) == 0.0:
-        print("Player " + str(3 - state.turn) + " wins!")
-    else: print("Nobody wins!")
-
+    print("white_win_rate", white_win_rate)
+    print("black_win_rate", black_win_rate)
     print("done !")
 
