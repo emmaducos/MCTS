@@ -150,10 +150,6 @@ class BreakThroughState:
             self.turn = WHITE
 
 class Node:
-    """ A node in the game tree. 
-        Note wins is always from the viewpoint of precedent_turn.
-        Crashes if state not specified.
-    """
     def __init__(self, move = None, parent = None, state = None):
         self.move = move # the move that got us to this node - "None" for the root node
         self.parentNode = parent # "None" for the root node
@@ -164,25 +160,16 @@ class Node:
         self.turn = state.turn # the only part of the state that the Node needs later
         
     def UCTSelectChild(self, explo_param):
-        """ Use the UCB1 formula to select a child node. A constant explo_param is applied so we vary the amount of
-            exploration versus exploitation.
-        """
         s = sorted(self.childNodes, key = lambda c: c.wins/c.visits + explo_param * math.sqrt(2*math.log(self.visits)/c.visits))[-1]
         return s
     
     def addChild(self, m, s):
-        """ Remove m from untriedMoves and add a new child node for this move.
-            Return the added child node
-        """
         n = Node(move = m, parent = self, state = s)
         self.untriedMoves.remove(m)
         self.childNodes.append(n)
         return n
     
     def update(self, result):
-        """ Update this node - one additional visit and result additional wins. 
-            result must be from the viewpoint of turn.
-        """
         # print('rslt', result)
         self.visits += 1
         # print('visits', self.visits)
@@ -202,7 +189,7 @@ class Policy:
         best_move = legal_moves[best_move_index]
         return best_move
 
-    def UCT(self, itermax, explo_param, verbose = False):
+    def UCT(self, itermax, explo_param):
         """ Conduct a UCT search for itermax iterations starting from rootstate.
             Return the best move from the rootstate.
             """
@@ -236,7 +223,7 @@ class Policy:
             print(node)
         return sorted(rootnode.childNodes, key = lambda c: c.visits)[-1].move # return the move that was most visited
 
-def game(board_size, explo_param, verbose):
+def game(board_size, explo_param, verbose=True):
     state = BreakThroughState(board_size)
     policy = Policy(state)
     print("turn", state.turn)
@@ -244,7 +231,7 @@ def game(board_size, explo_param, verbose):
         if verbose:
             print(state.board)
         if state.turn == WHITE:
-            m = policy.UCT(itermax=100, explo_param=explo_param, verbose=verbose) # play with values for itermax and verbose = True
+            m = policy.UCT(itermax=100, explo_param=explo_param) # play with values for itermax and verbose = True
         elif state.turn == BLACK:
             m = policy.random()
         if verbose:
